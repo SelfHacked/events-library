@@ -40,9 +40,10 @@ class EventApi:
                 Wheter to raise an exception when an
                 HTTPError is found while doing the request
         """
+        protocol = 'http' if self.domain == 'localhost' else 'https'
         req = Request(
             method='POST',
-            url=f'https://{self.domain}/{url}',
+            url=f'{protocol}://{self.domain}/{url}',
             data=JSONRenderer().render(data),
             headers={
                 'Token': settings.JWT_AUTH['SERVICE_SECRET_TOKEN'],
