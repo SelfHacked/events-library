@@ -73,12 +73,17 @@ class EventBus():
                 event_handler(payload)
 
             except Exception as error:
+                # Store exception locally for tracing bugs
                 HandlerLog.objects.create(
                     event_type=event_type,
                     payload=payload,
                     error_message=str(error),
                     handler_name=event_handler.__name__,
                 )
+
+                # Still raise exception so that the service
+                # that sent the event gets notified of the error
+                raise error
 
     @classmethod
     def emit_cud_locally(cls, resource_name: str, payload: typing.Dict):
