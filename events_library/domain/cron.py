@@ -16,11 +16,11 @@ class SuccessfulEventLogsRecycling(CronJobBase):
 
     def do(self):
         """Run task by cron."""
-        three_days_ago = timezone.now() - timezone.timedelta(days=3)
+        eight_days_ago = timezone.now() - timezone.timedelta(days=8)
 
         EventLog.objects.filter(
             was_success=True,
-            created_at__lte=three_days_ago,
+            created_at__lte=eight_days_ago,
         ).delete()
 
 
