@@ -63,7 +63,29 @@ class EventApi:
         payload: typing.Dict,
     ) -> dict:
         """Sends event, with retries, to the provided service_name, and
-        returns a summary of the proccess (failures, retries, etc.)"""
+        returns a summary of the proccess (failures, retries, etc.)
+
+        Arguments:
+            service_name: str
+                The name of the service who will receive the event
+            event_type: str
+                The type of event being sent
+            payload: dict
+                The payload data sent along the event        
+
+        Returns:
+            summary: {                    
+                was_success: bool
+                    Flag if the event was received and handled
+                    without errors by the target service
+                retry_number: int
+                    Amount of times the request was retried before
+                    ending up in success or reaching the max_retries
+                error_message: str
+                    The error message from the exception caught during
+                    the last retry of sending the event
+            }
+        """
         retry_number = 0
         was_success = False
         error_message = 'No errors'
