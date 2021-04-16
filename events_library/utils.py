@@ -6,7 +6,7 @@ from typing import Callable, Union
 from .application import CudPayloadSerializer  # noqa: F401
 from .core import EventBus
 from .domain import ObjectModel
-from .domain.constants import CudEvent  # noqa: F401
+from .domain.constants import Service, CudEvent  # noqa: F401
 
 
 def emit(event_type: str, payload: typing.Dict):
@@ -69,32 +69,6 @@ def subscribe_to_cud(
         )
 
     EventBus.subscribe_to_cud(resource_name, object_model_class)
-
-
-class Service():
-    """A class that encapsulates the available services
-    as members of the class, to be used instead of raw string"""
-    ACCOUNTS = 'accounts'
-    GENOME_FILES = 'genome-files'
-    ORDERS = 'orders'
-    PAYMENTS = 'payments'
-    PROFILES = 'profiles'
-    REGIMENS = 'regimens'
-    REPORTS = 'reports'
-    SELFDECODE = 'selfdecode'
-
-    @classmethod
-    def is_valid(cls, service_name: str):
-        return service_name in [
-            Service.ACCOUNTS,
-            Service.GENOME_FILES,
-            Service.ORDERS,
-            Service.PAYMENTS,
-            Service.PROFILES,
-            Service.REGIMENS,
-            Service.REPORTS,
-            Service.SELFDECODE,
-        ]
 
 
 def declare_event(
