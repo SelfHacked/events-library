@@ -56,7 +56,7 @@ class EventApi:
         if raise_exception:
             resp.raise_for_status()
 
-    def __try_sending_event_request(
+    def send_event_request(
         self,
         service_name: str,
         event_type: str,
@@ -74,7 +74,7 @@ class EventApi:
                 The payload data sent along the event        
 
         Returns:
-            summary: {                    
+            event_request_summary: {                    
                 was_success: bool
                     Flag if the event was received and handled
                     without errors by the target service
@@ -110,31 +110,3 @@ class EventApi:
             "retry_number": retry_number,
             "error_message": error_message,
         }
-
-    def send_event_request(
-        self,
-        service_name: str,
-        event_type: str,
-        payload: typing.Dict,
-    ):
-        """Sends the event and logs it in DB as an EventLog
-
-        Arguments:
-            service_name: str
-                The name of the service who will receive the event
-            event_type: str
-                The type of event being sent
-            payload: dict
-                The payload data sent along the event
-        """
-        event_summary = self.__try_sending_event_request(
-            service_name, event_type, payload,
-        )
-
-        if LOG_EVENTS_ON_SUCCESS or not event_summary["was_success"]:
-            EventLog.objects.create(
-                target_service=service_name,
-                event_type=event_type,
-                payload=payload,
-                **event_summary,
-            )
