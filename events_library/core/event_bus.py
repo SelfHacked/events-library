@@ -9,14 +9,7 @@ from rest_framework.serializers import ModelSerializer
 
 from ..core import EventApi
 from ..domain import EventLog, HandlerLog, ObjectModel
-
-
-class CudEvent():
-    """A class that encapsulates the available cud events
-    as members of the class, to be used instead of raw string"""
-    CREATED = 'created'
-    UPDATED = 'updated'
-    DELETED = 'deleted'
+from ..domain.constants import CudEvent
 
 
 class EventBus():

@@ -4,8 +4,9 @@ from django.db.models import Model
 from typing import Callable, Union
 
 from .application import CudPayloadSerializer  # noqa: F401
-from .core import EventBus, CudEvent   # noqa: F401
+from .core import EventBus
 from .domain import ObjectModel
+from .domain.constants import CudEvent  # noqa: F401
 
 
 def emit(event_type: str, payload: typing.Dict):

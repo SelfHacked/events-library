@@ -76,7 +76,7 @@ class EventApi:
         Returns:
             event_request_summary: {                    
                 was_success: bool
-                    Flag if the event was received and handled
+                    Tells if the event was received and handled
                     without errors by the target service
                 retry_number: int
                     Amount of times the request was retried before

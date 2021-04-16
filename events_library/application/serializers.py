@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
-from ..core.event_bus import CudEvent
+from ..domain.constants import CudEvent
 
 
 class EventSerializer(serializers.Serializer):

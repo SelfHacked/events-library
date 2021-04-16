@@ -1,7 +1,7 @@
 import typing
 
 from django.contrib import admin
-from django.db.models import Model, QuerySet, query
+from django.db.models import Model, QuerySet
 from django.http.request import HttpRequest
 
 from .core import EventApi
