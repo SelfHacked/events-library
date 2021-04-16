@@ -56,14 +56,46 @@ class EventApi:
         if raise_exception:
             resp.raise_for_status()
 
+    def __try_sending_event_request(
+        self,
+        service_name: str,
+        event_type: str,
+        payload: typing.Dict,
+    ) -> dict:
+        """Sends event, with retries, to the provided service_name, and
+        returns a summary of the proccess (failures, retries, etc.)"""
+        retry_number = 0
+        was_success = False
+        error_message = 'No errors'
+        path = f'service/{service_name}/event/'
+        event = {'event_type': event_type, 'payload': payload}
+
+        while (retry_number < self.max_retries):
+            try:
+                self.send_request(path, event)
+                was_success = True
+
+            except RequestException as error:
+                retry_number += 1
+                error_message = str(error)
+
+            finally:
+                if was_success:
+                    break
+
+        return {
+            "was_success": was_success,
+            "retry_number": retry_number,
+            "error_message": error_message,
+        }
+
     def send_event_request(
         self,
         service_name: str,
         event_type: str,
         payload: typing.Dict,
     ):
-        """Sends event to the provided service_name. It also uses
-        some retry logic inside of it, and logs the event in DB
+        """Sends the event and logs it in DB as an EventLog
 
         Arguments:
             service_name: str
@@ -73,33 +105,14 @@ class EventApi:
             payload: dict
                 The payload data sent along the event
         """
+        event_summary = self.__try_sending_event_request(
+            service_name, event_type, payload,
+        )
 
-        retry_number = 0
-        path = f'service/{service_name}/event/'
-        event = {'event_type': event_type, 'payload': payload}
-
-        while (retry_number < self.max_retries):
-            was_success = True
-            error_message = ''
-
-            try:
-                self.send_request(path, event)
-
-            except RequestException as error:
-                retry_number += 1
-                was_success = False
-                error_message = str(error)
-
-            finally:
-                if LOG_EVENTS_ON_SUCCESS or not was_success:
-                    EventLog.objects.create(
-                        target_service=service_name,
-                        event_type=event_type,
-                        payload=payload,
-                        retry_number=retry_number,
-                        was_success=was_success,
-                        error_message=error_message,
-                    )
-
-                if was_success:
-                    break
+        if LOG_EVENTS_ON_SUCCESS or not event_summary["was_success"]:
+            EventLog.objects.create(
+                target_service=service_name,
+                event_type=event_type,
+                payload=payload,
+                **event_summary,
+            )
