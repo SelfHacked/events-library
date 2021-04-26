@@ -34,19 +34,24 @@ class EventLogAdmin(InmutableAdminModel):
         "target_service",
     ]
     list_display = [
-        'id', 'event_type', 'target_service',
-        "retry_number", 'was_success', 'created_at',
+        "id",
+        "event_type",
+        "target_service",
+        "retry_number",
+        "was_success",
+        "created_at",
     ]
     ordering = ["-created_at"]
     actions = ["resend_failed_events"]
 
-    def resend_failed_events(self, request: HttpRequest, queryset: QuerySet[EventLog]) -> None:
+    def resend_failed_events(self, request: HttpRequest, queryset: QuerySet) -> None:
         """Resends failed EventLogs selected by the user"""
-        api = EventApi()
         fail_count = 0
-        total = queryset.count()
+        api = EventApi()
+        failed_events = queryset.filter(was_success=False)
 
-        for event_log in queryset.filter(was_success=False):
+        for event_log_instance in failed_events:
+            event_log: EventLog = event_log_instance
             event_request_summary = api.send_event_request(
                 event_log.target_service,
                 event_log.event_type,
@@ -64,14 +69,12 @@ class EventLogAdmin(InmutableAdminModel):
             event_log.retry_number += event_request_summary["retry_number"]
             event_log.save()
 
+        total = failed_events.count()
         self.message_user(
-            request,
-            f"Finished resending events: {fail_count} (out of {total}) failed"
+            request, f"Finished resending events: {fail_count} (out of {total}) failed"
         )
 
-    resend_failed_events.short_description = (
-        "Mark only failed events: successful ones will be resended"
-    )
+    resend_failed_events.short_description = "Resend failed events"
 
 
 @admin.register(HandlerLog)
@@ -79,7 +82,9 @@ class HandlerLogAdmin(InmutableAdminModel):
     list_filter = ["event_type", "handler_name"]
 
     list_display = [
-        'id', 'event_type',
-        'handler_name', 'created_at',
+        "id",
+        "event_type",
+        "handler_name",
+        "created_at",
     ]
     ordering = ["-created_at"]
