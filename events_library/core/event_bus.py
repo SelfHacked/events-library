@@ -8,15 +8,8 @@ from enumfields.drf import EnumSupportSerializerMixin
 from rest_framework.serializers import ModelSerializer
 
 from ..core import EventApi
-from ..domain import HandlerLog, ObjectModel
-
-
-class CudEvent():
-    """A class that encapsulates the available cud events
-    as members of the class, to be used instead of raw string"""
-    CREATED = 'created'
-    UPDATED = 'updated'
-    DELETED = 'deleted'
+from ..domain import EventLog, HandlerLog, ObjectModel
+from ..domain.constants import CudEvent
 
 
 class EventBus():
@@ -38,7 +31,7 @@ class EventBus():
     map_event_to_model_class = {}
 
     @classmethod
-    def subscribe(cls, event_type: str, event_handler: typing.Callable):
+    def subscribe(cls, event_type: str, event_handler: typing.Callable) -> None:
         """Adds the event_handler to the list of functions to be
         called when an event with the given event_type is emitted"""
         # Get current list of handlers
@@ -53,14 +46,14 @@ class EventBus():
         cls,
         resource_name: str,
         object_model_class: typing.Type[ObjectModel],
-    ):
+    ) -> None:
         """Subscribes a Model class, identified by the given
         resource_name argument, to CUD changes in the service
         which acts as source of true for the given Model"""
         cls.map_event_to_model_class[resource_name] = object_model_class
 
     @classmethod
-    def emit_locally(cls, event_type: str, payload: typing.Dict):
+    def emit_locally(cls, event_type: str, payload: typing.Dict) -> None:
         """Calls, with the given payload as argument, each
         event_handler that was attached to the given event_type.
         It creates a HandlerLog in case of Exception during the
@@ -86,7 +79,7 @@ class EventBus():
                 raise error
 
     @classmethod
-    def emit_cud_locally(cls, resource_name: str, payload: typing.Dict):
+    def emit_cud_locally(cls, resource_name: str, payload: typing.Dict) -> None:
         """Performs a CUD action in the Model class that was previously
         subscribed to CUD changes using the same resource_name"""
         model_class: Model = cls.map_event_to_model_class.get(
@@ -119,9 +112,9 @@ class EventBus():
             model_instance.save()
 
     @classmethod
-    def emit_abroad(cls, event_type: str, payload: typing.Dict):
-        """Sends the event to the services that
-        are subscribed to the given event_type"""
+    def emit_abroad(cls, event_type: str, payload: typing.Dict) -> None:
+        """Sends the event to the services that are subscribed to 
+        the given event_type, and stores a summary in the EventLog table"""
         if settings.DISABLE_EMIT_IN_EVENTS_LIBRARY:
             return   # No op
 
@@ -130,7 +123,18 @@ class EventBus():
 
         api = EventApi()
         for target_service in cls.map_event_to_target_services[event_type]:
-            api.send_event_request(target_service, event_type, payload)
+            event_request_summary = api.send_event_request(
+                target_service, event_type, payload,
+            )
+            it_failed = not event_request_summary["was_success"]
+
+            if it_failed or settings.LOG_EVENTS_ON_SUCCESS:
+                EventLog.objects.create(
+                    **event_request_summary,
+                    payload=payload,
+                    event_type=event_type,
+                    target_service=target_service,
+                )
 
     @classmethod
     def declare_event(

@@ -4,11 +4,12 @@ from django.db.models import Model
 from typing import Callable, Union
 
 from .application import CudPayloadSerializer  # noqa: F401
-from .core import EventBus, CudEvent   # noqa: F401
+from .core import EventBus
 from .domain import ObjectModel
+from .domain.constants import Service, CudEvent  # noqa: F401
 
 
-def emit(event_type: str, payload: typing.Dict):
+def emit(event_type: str, payload: typing.Dict) -> None:
     """Sends the payload to the services
     that are subscribed to that event_type
 
@@ -24,7 +25,7 @@ def emit(event_type: str, payload: typing.Dict):
 def subscribe_to(
     event_type: str,
     event_handler: Union[Callable, typing.List[Callable]],
-):
+) -> None:
     """Performs the required configuration so that when an
     event with the given event_type is emitted, the event_handler
     functions are call using the payload of the event as argument
@@ -49,7 +50,7 @@ def subscribe_to(
 def subscribe_to_cud(
     resource_name: str,
     object_model_class: typing.Type[ObjectModel],
-):
+) -> None:
     """Subscribes to CUD changes, and reflects them
     in the given object_model_class
 
@@ -70,36 +71,10 @@ def subscribe_to_cud(
     EventBus.subscribe_to_cud(resource_name, object_model_class)
 
 
-class Service():
-    """A class that encapsulates the available services
-    as members of the class, to be used instead of raw string"""
-    ACCOUNTS = 'accounts'
-    GENOME_FILES = 'genome-files'
-    ORDERS = 'orders'
-    PAYMENTS = 'payments'
-    PROFILES = 'profiles'
-    REGIMENS = 'regimens'
-    REPORTS = 'reports'
-    SELFDECODE = 'selfdecode'
-
-    @classmethod
-    def is_valid(cls, service_name: str):
-        return service_name in [
-            Service.ACCOUNTS,
-            Service.GENOME_FILES,
-            Service.ORDERS,
-            Service.PAYMENTS,
-            Service.PROFILES,
-            Service.REGIMENS,
-            Service.REPORTS,
-            Service.SELFDECODE,
-        ]
-
-
 def declare_event(
     event_type: str,
     subscribed_services: typing.List[str],
-):
+) -> None:
     """Configures that events of the given event_type
     reach the services provided in the subscribed_services
     argument (even if they didn't subscribed to the event).
@@ -141,7 +116,7 @@ def declare_cud_event(
     resource_name: str,
     model_class: typing.Type[Model],
     subscribed_services: typing.List[str],
-):
+) -> None:
     """Configures a Django Model to send an event (using the resource_name
     argument as event_type) whenever an instance of that model is created,
     updated or deleted, attaching some extra metadata to the event payload

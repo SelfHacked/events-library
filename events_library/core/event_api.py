@@ -61,9 +61,9 @@ class EventApi:
         service_name: str,
         event_type: str,
         payload: typing.Dict,
-    ):
-        """Sends event to the provided service_name. It also uses
-        some retry logic inside of it, and logs the event in DB
+    ) -> dict:
+        """Sends event, with retries, to the provided service_name, and
+        returns a summary of the proccess (failures, retries, etc.)
 
         Arguments:
             service_name: str
@@ -71,35 +71,42 @@ class EventApi:
             event_type: str
                 The type of event being sent
             payload: dict
-                The payload data sent along the event
-        """
+                The payload data sent along the event        
 
+        Returns:
+            event_request_summary: {                    
+                was_success: bool
+                    Tells if the event was received and handled
+                    without errors by the target service
+                retry_number: int
+                    Amount of times the request was retried before
+                    ending up in success or reaching the max_retries
+                error_message: str
+                    The error message from the exception caught during
+                    the last retry of sending the event
+            }
+        """
         retry_number = 0
+        was_success = False
+        error_message = 'No errors'
         path = f'service/{service_name}/event/'
         event = {'event_type': event_type, 'payload': payload}
 
         while (retry_number < self.max_retries):
-            was_success = True
-            error_message = ''
-
             try:
                 self.send_request(path, event)
+                was_success = True
 
             except RequestException as error:
                 retry_number += 1
-                was_success = False
                 error_message = str(error)
 
             finally:
-                if LOG_EVENTS_ON_SUCCESS or not was_success:
-                    EventLog.objects.create(
-                        target_service=service_name,
-                        event_type=event_type,
-                        payload=payload,
-                        retry_number=retry_number,
-                        was_success=was_success,
-                        error_message=error_message,
-                    )
-
                 if was_success:
                     break
+
+        return {
+            "was_success": was_success,
+            "retry_number": retry_number,
+            "error_message": error_message,
+        }

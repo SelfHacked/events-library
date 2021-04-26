@@ -1,9 +1,10 @@
 import typing
 
 from django.contrib import admin
-from django.db.models import Model
+from django.db.models import Model, QuerySet
 from django.http.request import HttpRequest
 
+from .core import EventApi
 from .domain import EventLog, HandlerLog
 
 
@@ -33,11 +34,47 @@ class EventLogAdmin(InmutableAdminModel):
         "target_service",
     ]
     list_display = [
-        'id', 'event_type',
-        'target_service',
-        'was_success', 'created_at',
+        "id",
+        "event_type",
+        "target_service",
+        "retry_number",
+        "was_success",
+        "created_at",
     ]
     ordering = ["-created_at"]
+    actions = ["resend_failed_events"]
+
+    def resend_failed_events(self, request: HttpRequest, queryset: QuerySet) -> None:
+        """Resends failed EventLogs selected by the user"""
+        fail_count = 0
+        api = EventApi()
+        failed_events = queryset.filter(was_success=False)
+
+        for event_log_instance in failed_events:
+            event_log: EventLog = event_log_instance
+            event_request_summary = api.send_event_request(
+                event_log.target_service,
+                event_log.event_type,
+                event_log.payload,
+            )
+
+            event_log.was_success = event_request_summary["was_success"]
+            if not event_log.was_success:
+                fail_count += 1
+                # Update last error_message only in this case (in case
+                # we want to see more common bugs in our service system)
+                event_log.error_message = event_request_summary["error_message"]
+
+            # Count all retries since creation of the EventLog
+            event_log.retry_number += event_request_summary["retry_number"]
+            event_log.save()
+
+        total = failed_events.count()
+        self.message_user(
+            request, f"Finished resending events: {fail_count} (out of {total}) failed"
+        )
+
+    resend_failed_events.short_description = "Resend failed events"
 
 
 @admin.register(HandlerLog)
@@ -45,7 +82,9 @@ class HandlerLogAdmin(InmutableAdminModel):
     list_filter = ["event_type", "handler_name"]
 
     list_display = [
-        'id', 'event_type',
-        'handler_name', 'created_at',
+        "id",
+        "event_type",
+        "handler_name",
+        "created_at",
     ]
     ordering = ["-created_at"]
